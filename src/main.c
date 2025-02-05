@@ -27,8 +27,6 @@ typedef struct s_game
     int y;
     // game options
     int nColectables;
-    int exitX;
-    int exitY;
 
     // mlx stuff
     void *mlx_ptr;
@@ -181,8 +179,6 @@ bool CheckMapContents(t_game *game)
             {
                 if (hasExit) // double exit
                     return ((ft_putstr_fd("Map error\n", 2), FreeMap(game->map, game->height), true));
-                game->exitX = x; // renderer stuff
-                game->exitY = y; // renderer stuff
                 hasExit = true;
             }
             else if (game->map[y][x] == 'C')
@@ -308,7 +304,7 @@ void MoveUp(t_game *game)
         game->nColectables--;
         game->map[game->y][game->x] = '0';
     }
-    else if (game->x == game->exitX && newY == game->exitY)
+    else if (game->map[game->y][game->x] == 'E')
     {
         if (game->nColectables == 0)
         {
@@ -334,7 +330,7 @@ void MoveDown(t_game *game)
         game->nColectables--;
         game->map[game->y][game->x] = '0';
     }
-    else if (game->x == game->exitX && newY == game->exitY)
+    else if (game->map[game->y][game->x] == 'E')
     {
         if (game->nColectables == 0)
         {
@@ -360,7 +356,7 @@ void MoveRight(t_game *game)
         game->nColectables--;
         game->map[game->y][game->x] = '0';
     }
-    else if (game->x == game->exitX && game->y == game->exitY)
+    else if (game->map[game->y][game->x] == 'E')
     {
         if (game->nColectables == 0)
         {
@@ -386,7 +382,7 @@ void MoveLeft(t_game *game)
         game->nColectables--;
         game->map[game->y][game->x] = '0';
     }
-    else if (game->x == game->exitX && game->y == game->exitY)
+    else if (game->map[game->y][game->x] == 'E')
     {
         if (game->nColectables == 0)
         {
