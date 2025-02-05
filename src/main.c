@@ -145,16 +145,17 @@ bool CheckMapContents(t_game *game)
             {
                 if (hasPlayer) // double player
                     return ((ft_putstr_fd("Map error\n", 2), FreeMap(game->map, game->height), return true));
-                game->x = x;
-                game->y = y;
+                game->map[y][x] = 0; // clear for renderer
+                game->x = x; // fetch for renderer
+                game->y = y; // fetch for renderer
                 hasPlayer = true;
             }
             else if (game->map[y][x] == 'E')
             {
-                if (hasExit) // double player
+                if (hasExit) // double exit
                     return ((ft_putstr_fd("Map error\n", 2), FreeMap(game->map, game->height), return true));
-                game->exitX = x;
-                game->exitY = y;
+                game->exitX = x; // renderer stuff
+                game->exitY = y; // renderer stuff
                 hasExit = true;
             }
             else if (game->map[y][x] == 'C')
@@ -230,18 +231,18 @@ void RenderMap(t_game *game)
     for (int y = 0; y < HEIGHT; y++) {
         for (int x = 0; x < WIDTH; x++) {
             if (game->map[y][x] == '1')
-                draw_square(game, x * (TSIZE + 1), y * (TSIZE + 1), 0x0000FF);
+                draw_square(game, x * (TSIZE + 1), y * (TSIZE + 1), 0x0000FF); // wall
             else if (game->map[y][x] == 'C')
-                draw_square(game, x * (TSIZE + 1), y * (TSIZE + 1), 0x00FFFF);
+                draw_square(game, x * (TSIZE + 1), y * (TSIZE + 1), 0x00FFFF); // colectable
             else if (game->x == game->exitX && game->y == game->exitY)
-                draw_square(game, x * (TSIZE + 1), y * (TSIZE + 1), 0xFFFF00);
+                draw_square(game, x * (TSIZE + 1), y * (TSIZE + 1), 0xFFFF00); // Exit
             else
-                draw_square(game, x * (TSIZE + 1), y * (TSIZE + 1), 0xFFFFFF);
+                draw_square(game, x * (TSIZE + 1), y * (TSIZE + 1), 0xFFFFFF); // walkable space
         }
     }
 
     // Draw Player
-    draw_square(game, game->x * (TSIZE + 1), game->y * (TSIZE + 1), 0xFF00FF);
+    draw_square(game, game->x * (TSIZE + 1), game->y * (TSIZE + 1), 0xFF00FF); // player
 
 }
 
