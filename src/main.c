@@ -27,6 +27,8 @@ typedef struct s_game
     int y;
     // game options
     int nColectables;
+    int exitX;
+    int exitY;
 
     // mlx stuff
     void *mlx_ptr;
@@ -143,12 +145,16 @@ bool CheckMapContents(t_game *game)
             {
                 if (hasPlayer) // double player
                     return ((ft_putstr_fd("Map error\n", 2), FreeMap(game->map, game->height), return true));
+                game->x = x;
+                game->y = y;
                 hasPlayer = true;
             }
             else if (game->map[y][x] == 'E')
             {
                 if (hasExit) // double player
                     return ((ft_putstr_fd("Map error\n", 2), FreeMap(game->map, game->height), return true));
+                game->exitX = x;
+                game->exitY = y;
                 hasExit = true;
             }
             else if (game->map[y][x] == 'C')
@@ -219,21 +225,167 @@ void draw_square(t_game *game, int x, int y, int color) {
 }
 
 // Renders the map
-void RenderMap(t_game *game) {
+void RenderMap(t_game *game)
+{
     for (int y = 0; y < HEIGHT; y++) {
         for (int x = 0; x < WIDTH; x++) {
             if (game->map[y][x] == '1')
                 draw_square(game, x * (TSIZE + 1), y * (TSIZE + 1), 0x0000FF);
             else if (game->map[y][x] == 'C')
                 draw_square(game, x * (TSIZE + 1), y * (TSIZE + 1), 0x00FFFF);
-            else if (game->map[y][x] == 'P')
-                draw_square(game, x * (TSIZE + 1), y * (TSIZE + 1), 0xFF00FF);
-            else if (game->map[y][x] == 'E')
+            else if (game->x == game->exitX && game->y == game->exitY)
                 draw_square(game, x * (TSIZE + 1), y * (TSIZE + 1), 0xFFFF00);
             else
                 draw_square(game, x * (TSIZE + 1), y * (TSIZE + 1), 0xFFFFFF);
         }
     }
+
+    // Draw Player
+    draw_square(game, game->x * (TSIZE + 1), game->y * (TSIZE + 1), 0xFF00FF);
+
+}
+
+int ExitGame(t_game *param)
+{
+   	if (data->map)
+		FreeMap(game->map, game->height);
+	if (game->img_ptr)
+		mlx_destroy_image(game->mlx_ptr, game->img_ptr);
+	if (game->win_ptr)
+		mlx_destroy_window(game->mlx_ptr, game->win_ptr);
+	if (game->mlx_ptr)
+	{
+		mlx_destroy_display(game->mlx_ptr);
+		free(game->mlx_ptr);
+	}
+    exit (0);
+}
+
+void MoveUp(t_game *game)
+{
+    int newY = game->y - 1;
+    if (newY < 0 || newY >= game->height) return ;
+
+    if (game->map[y][game->x] == '1' || 
+        game->map[y][game->x] == '\n' || 
+        game->map[y][game->x] == '\0')
+        return ;
+    
+    game->y--;
+    // todo moves print here
+    if (game->map[game->y][game->x] == 'C')
+    {
+        game->nColectables--;
+        game->map[game->y][game->x] = '0';
+    }
+    else if (game->x == game->exitX && newY == game->exitY)
+    {
+        if (game->nColectables == 0)
+        {
+            ft_putstr("YOU WIN\n");
+            ExitGame(game);
+        }
+    }
+}
+void MoveDown(t_game *game)
+{
+    int newY = game->y + 1;
+    if (newY < 0 || newY >= game->height) return ;
+
+    if (game->map[newY][game->x] == '1' || 
+        game->map[newY][game->x] == '\n' || 
+        game->map[newY][game->x] == '\0')
+        return ;
+    
+    game->y++;
+    // todo moves print here
+    if (game->map[game->y][game->x] == 'C')
+    {
+        game->nColectables--;
+        game->map[game->y][game->x] = '0';
+    }
+    else if (game->x == game->exitX && newY == game->exitY)
+    {
+        if (game->nColectables == 0)
+        {
+            ft_putstr("YOU WIN\n");
+            ExitGame(game);
+        }
+    }
+}
+void MoveRight(t_game *game)
+{
+    int newX = game->x + 1;
+    if (newX < 0 || newX >= game->width) return ;
+
+    if (game->map[newY][game->x] == '1' || 
+        game->map[newY][game->x] == '\n' || 
+        game->map[newY][game->x] == '\0')
+        return ;
+    
+    game->y++;
+    // todo moves print here
+    if (game->map[game->y][game->x] == 'C')
+    {
+        game->nColectables--;
+        game->map[game->y][game->x] = '0';
+    }
+    else if (game->x == game->exitX && newY == game->exitY)
+    {
+        if (game->nColectables == 0)
+        {
+            ft_putstr("YOU WIN\n");
+            ExitGame(game);
+        }
+    }
+}
+void MoveLeft(t_game *game)
+{
+    int newX = game->x - 1;
+    if (newX < 0 || newX >= game->width) return ;
+
+    if (game->map[newY][game->x] == '1' || 
+        game->map[newY][game->x] == '\n' || 
+        game->map[newY][game->x] == '\0')
+        return ;
+    
+    game->y--;
+    // todo moves print here
+    if (game->map[game->y][game->x] == 'C')
+    {
+        game->nColectables--;
+        game->map[game->y][game->x] = '0';
+    }
+    else if (game->x == game->exitX && newY == game->exitY)
+    {
+        if (game->nColectables == 0)
+        {
+            ft_putstr("YOU WIN\n");
+            ExitGame(game);
+        }
+    }
+}
+
+int ReadKeys(int key, t_game *game)
+{
+    if ((key == XK_w || key == XK_W) && game->y > 0)
+        MoveUp(game);
+    if ((key == XK_s || key == XK_S)  && game->y < game->height - 1)
+        MoveDown(game);
+    if ((key == XK_a || key == XK_A)  && game->x > 0)
+        MoveLeft(game);
+    if ((key == XK_d || key == XK_D)  && game->y > 0)
+        MoveRight(game);
+    if (key == XK_Escape)
+        ExitGame(game);
+    
+    
+    RenderMap(game);
+    mlx_put_image_to_window(game->mlx_ptr, game->win_ptr, game->img_ptr, 0, 0);
+    mlx_destroy_image(game->mlx_ptr, game->img_ptr);
+    game->img_ptr = mlx_new_image(game->mlx_ptr, WIDTH, HEIGHT);
+    game->img_addr = mlx_get_data_addr(game->img_ptr, &game->bpp, &game->line_len, &game->endina);
+    return 0;
 }
 
 int main(int ac, char **av)
@@ -270,7 +422,9 @@ int main(int ac, char **av)
     // Draw map
     RenderMap(&game);
 
+    mlx_hook(game.win_ptr, DestroyNotify, 1L << 0, ExitGame, &game);
+    mlx_key_hook(game.win_ptr, ReadKeys, &game);
+    mlx_loop(game.mlx_ptr);
 
-    FreeMap(game.map, game.height);
     return 0;
 }
