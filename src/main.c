@@ -1,5 +1,19 @@
-#include "so_long.h"
+# include "mlx.h"
+# include "../lib/minilibx-linux/mlx_int.h"
+# include <X11/keysym.h>
+# include "libft.h"
+
 #include "stdbool.h"
+# include <math.h>
+# include <stdlib.h>
+# include <fcntl.h>
+# include <stdio.h>
+# include <stdarg.h>
+# include <limits.h>
+
+#define HEIGHT 800
+#define WIDTH 600
+#define TSIZE 32
 
 typedef struct s_game
 {
@@ -14,7 +28,14 @@ typedef struct s_game
     // game options
     int nColectables;
 
-    
+    // mlx stuff
+    void *mlx_ptr;
+    void *win_ptr;
+    void *img_ptr;
+    char *img_addr;
+    int line_len;
+    int endina;
+    int bpp;
 } t_game;
 
 bool ParseInput(int ac, char **av)
@@ -94,19 +115,19 @@ bool ReadMapToBuffer(char *filePath, t_game *game)
     return false; 
 }
 
-void FreeMap(t_game *game)
+void FreeMap(char **map, int height)
 {
     for (int i = 0; i < game->height; i++)
     {
-        if (game->map[i])
-            free(game->map[i]);
+        if (map[i])
+            free(map[i]);
     }
-    if (game->map)
-        free(game->map);
+    if (map)
+        free(map);
     return ;
 }
 
-bool CheckMap(t_game *game)
+bool CheckMapContents(t_game *game)
 {
     bool hasPlayer = false;
     bool hasExit = false;
@@ -116,18 +137,18 @@ bool CheckMap(t_game *game)
         for (int x = 0; x < game->width; x++)
         {
             if (!ft_strchr("PCE10\n", game->map[y][x]))
-                return ((ft_putstr_fd("Map error\n", 2), FreeMap(game), return true));
+                return ((ft_putstr_fd("Map error\n", 2), FreeMap(game->map, game->height), return true));
             
             if (game->map[y][x] == 'P')
             {
                 if (hasPlayer) // double player
-                    return ((ft_putstr_fd("Map error\n", 2), FreeMap(game), return true));
+                    return ((ft_putstr_fd("Map error\n", 2), FreeMap(game->map, game->height), return true));
                 hasPlayer = true;
             }
             else if (game->map[y][x] == 'E')
             {
                 if (hasExit) // double player
-                    return ((ft_putstr_fd("Map error\n", 2), FreeMap(game), return true));
+                    return ((ft_putstr_fd("Map error\n", 2), FreeMap(game->map, game->height), return true));
                 hasExit = true;
             }
             else if (game->map[y][x] == 'C')
@@ -135,8 +156,84 @@ bool CheckMap(t_game *game)
         }
     }
     if (!hasPlayer || !hasExit || !game->nColectables) 
-        return ((ft_putstr_fd("Map error\n", 2), FreeMap(game), return true));
+        return ((ft_putstr_fd("Map error\n", 2), FreeMap(game->map, game->height), return true));
     else return false;
+}
+
+bool FloodFill(t_game *game, int y, int x, char to_fill)
+{
+    if (x < 0 || y < 0 || y >= game->height || x >= game->width)
+        return true; // if out of bounds === map not closed
+
+    if (game->map[y][x] != to_fill && !ft_strchr("ECP", game->map[y][x])) // wall
+        return false;
+    
+    game->map[y][x] = 'x'; // 0s in the game->map will become F!!!
+
+    bool edge = false;
+    edge |= floodFill(game->map, y, x - 1, to_fill);
+    edge |= floodFill(game->map, y, x + 1, to_fill);
+    edge |= floodFill(game->map, y - 1, x, to_fill);
+    edge |= floodFill(game->map, y + 1, x, to_fill);
+    return edge;
+}
+
+static bool CheckMapClosed(t_game *game)
+{
+    char **mapCopy = malloc(sizeof(char *) * game->height);
+    //todo error checking
+    for (int i = 0; i < game->height; i++)
+    {
+        mapCopy[i] = ft_strdup(game->map[i]);
+        //todo error checking
+    }
+    bool passedTest = FloodFill(game->map, game->y, head->x, '0'); 
+    FreeMap(mapCopy, game->height);
+    return (passedTest);
+}
+
+
+// dst => the address of the pixels in memory
+// we adjust the offset of the with our x,y coords of the pixel along with the
+// line_len and the bpp and just apply to that pixel the respective color
+void	put_pixel_to_img(t_game *game, int x, int y, int color)
+{
+	char	*dst;
+
+	if (x >= 0 && y >= 0 && x < WIDTH && y < HEIGHT)
+	{
+		dst = game->img_addr + (y * game->line_len + x * (game->bpp / 8));
+		*(unsigned int *)dst = color;
+	}
+}
+
+// Draws a filled square at (x, y) with TILE_SIZE
+void draw_square(t_game *game, int x, int y, int color) {
+    int i, j;
+    
+    for (i = 0; i < TSIZE; i++) {
+        for (j = 0; j < TSIZE; j++) {
+            put_pixel(game, x + j, y + i, color);
+        }
+    }
+}
+
+// Renders the map
+void RenderMap(t_game *game) {
+    for (int y = 0; y < HEIGHT; y++) {
+        for (int x = 0; x < WIDTH; x++) {
+            if (game->map[y][x] == '1')
+                draw_square(game, x * (TSIZE + 1), y * (TSIZE + 1), 0x0000FF);
+            else if (game->map[y][x] == 'C')
+                draw_square(game, x * (TSIZE + 1), y * (TSIZE + 1), 0x00FFFF);
+            else if (game->map[y][x] == 'P')
+                draw_square(game, x * (TSIZE + 1), y * (TSIZE + 1), 0xFF00FF);
+            else if (game->map[y][x] == 'E')
+                draw_square(game, x * (TSIZE + 1), y * (TSIZE + 1), 0xFFFF00);
+            else
+                draw_square(game, x * (TSIZE + 1), y * (TSIZE + 1), 0xFFFFFF);
+        }
+    }
 }
 
 int main(int ac, char **av)
@@ -156,9 +253,24 @@ int main(int ac, char **av)
     if (ReadMapToBuffer(av[1], &game)) return 3;
 
     // check for exit, player, colectables and bad chars on the map
-    if (CheckMap(av)) return 3;
+    if (CheckMapContents(&game)) return 4;
+
+    if (CheckClosedMap(&game)) return 5;
+
+    // MINILIBX
+    game.mlx_ptr = mlx_init();
+    // todo error check
+    game.win_ptr = mlx_new_window(game.mlx_ptr, WIDTH, HEIGHT, "so long");
+    //todo error check
+    game.img_ptr = mlx_new_image(game.mlx_ptr, WIDTH, HEIGHT);
+    //todo error check
+    game.img_addr = mlx_get_data_addr(game.img_ptr, &game.bpp, &game.line_len, &game.endian);
+    //todo error check
+
+    // Draw map
+    RenderMap(&game);
 
 
-    FreeMap(&game);
+    FreeMap(game.map, game.height);
     return 0;
 }
