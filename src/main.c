@@ -69,6 +69,20 @@ bool CheckFile(char **av)
     return false;
 }
 
+// this because getnextline gives still reachable if we stop mid reading for some reason
+void    finishReading(int fd)
+{
+    char *line;
+    while(true)
+    {
+        line =get_next_line(fd);
+        if (line)
+            free(line);
+        else
+            break ;
+    }
+}
+
 bool GetDimensions(char *filePath, t_game* game)
 {
     int fd = open(filePath, O_RDONLY);
@@ -76,6 +90,7 @@ bool GetDimensions(char *filePath, t_game* game)
         return (ft_putstr_fd("Open error\n", 2), true);
     
     char *line = get_next_line(fd);
+    if (!line) return (ft_putstr_fd("Error\n", 2), close(fd), true);
     game->width = ft_strlen(line);
     if (line[game->width - 1] == '\n')
     {
@@ -84,7 +99,7 @@ bool GetDimensions(char *filePath, t_game* game)
     }
 
     if (game->width < 3) // min map width (1x1)
-        return (ft_putstr_fd("Map error\n", 2), close(fd), true);
+        return (ft_putstr_fd("Map error\n", 2),free(line),finishReading(fd), close(fd), true);
 
     while (true)
     {
@@ -99,7 +114,7 @@ bool GetDimensions(char *filePath, t_game* game)
             line[lineLen] = '\0'; // trim the nl
         } 
         // compare len
-        if (lineLen != game->width) return (ft_putstr_fd("Map error\n", 2), close(fd), true);
+        if (lineLen != game->width) return (ft_putstr_fd("Map error2\n", 2), free(line), finishReading(fd), close(fd), true);
     }
 
     close(fd);
@@ -240,15 +255,6 @@ void draw_square(t_game *game, int x, int y, int color) {
 // Renders the map
 void RenderMap(t_game *game)
 {
-    for (int i = 0; i < game->height; i++)
-    {
-        for(int j = 0; j< game->width; j++)
-        {
-            printf("%c", game->map[i][j]);
-        }
-        printf("\n");
-    }
-
     for (int y = 0; y < game->height; y++)
     {
         for (int x = 0; x < game->width; x++) 
@@ -433,7 +439,6 @@ int main(int ac, char **av)
     if (CheckMapContents(&game)) return 4;
 
     if (CheckMapClosed(&game)) return 5;
-    printf("OIOI\n");
 
     // MINILIBX
     game.mlx_ptr = mlx_init();
@@ -447,8 +452,6 @@ int main(int ac, char **av)
 
     // Draw map
     RenderMap(&game);
-
-    printf("OIOI\n");
 
     mlx_hook(game.win_ptr, DestroyNotify, 1L << 0, ExitGame, &game);
     mlx_key_hook(game.win_ptr, ReadKeys, &game);

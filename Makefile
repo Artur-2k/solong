@@ -1,5 +1,5 @@
 # EXECUTABLE
-TARGET = fdf
+NAME =so_long
 
 # LIBRARIES
 LIBFT = $(LIB_DIR)libft.a
@@ -26,12 +26,12 @@ OBJ = $(addprefix $(OBJ_DIR), $(SRC_FILES:.c=.o))
 HEADERS = $(wildcard $(INC_DIR)*.h)
 
 # RULES
-all: $(TARGET)
+all: $(NAME)
 
-$(TARGET): $(OBJ) $(LIBFT) $(MINILIBX)
+$(NAME): $(OBJ) $(LIBFT) $(MINILIBX)
 	@echo "Preparing the executable..."
 	$(CC) $(CFLAGS) -o $@ $(OBJ) $(LINKS)
-	@echo "\nFdF is ready.\nUsage: ./fdf map_path"
+	@echo "\nso_long is ready.\nUsage: ./so_long map_path"
 
 $(LIBFT):
 	@echo "Creating libft.a..."
@@ -57,7 +57,7 @@ clean:
 
 fclean: clean
 	@echo "Full cleaning!"
-	@rm -f $(TARGET)
+	@rm -f $(NAME)
 	@rm -f $(LIBFT)
 	@rm -f $(MINILIBX)
 	@make -C $(LIB_DIR)libft fclean
