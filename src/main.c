@@ -44,12 +44,12 @@ bool ParseInput(int ac, char **av)
 {
     if (ac != 2) return (ft_putstr_fd("Bad args\n", 2) ,true); // solong av1 av2
 
-    if (ft_strlen(av[1]) <= 4) (ft_putstr_fd("Bad args\n", 2) ,true); // .ber 
+    if (ft_strlen(av[1]) <= 4) return (ft_putstr_fd("Bad args\n", 2), true); // .ber 
 
     // ola.ber0 len 7
     // 01234567 .ber i=7-4=3
-    if (ft_strcmp(".ber", &av[1][ft_strlen(av[1]) - 4]))
-        (ft_putstr_fd("Bad args\n", 2) ,true) // av1.ber
+    if (ft_strncmp(".ber", &av[1][ft_strlen(av[1]) - 4], 4))
+        return (ft_putstr_fd("Bad args\n", 2), true); // av1.ber
 
     return false; // all good
 } 
@@ -69,49 +69,61 @@ bool CheckFile(char **av)
     return false;
 }
 
-bool GetDimensions(int fd, t_game* game)
+bool GetDimensions(char *filePath, t_game* game)
 {
     int fd = open(filePath, O_RDONLY);
     if (fd < 0)
-        return (ft_putstr_fd("Open error\n", 2), return true);
+        return (ft_putstr_fd("Open error\n", 2), true);
     
     char *line = get_next_line(fd);
     game->width = ft_strlen(line);
-    if (game->width < 3) // min map width (1x1)
-        return (ft_putstr_fd("Map error\n", 2), close(fd), return true);
+    if (line[game->width - 1] == '\n')
+    {
+        game->width--; // remove the \n from width
+        line[game->width] = '\0'; // trim the nl
+    }
 
-    while (line)
+    if (game->width < 3) // min map width (1x1)
+        return (ft_putstr_fd("Map error\n", 2), close(fd), true);
+
+    while (true)
     {
         game->height++;
         free(line);
         line = get_next_line(fd);
+        if (!line) break;
         int lineLen = ft_strlen(line);
+        if (line[lineLen - 1] == '\n')
+        {
+            lineLen--;
+            line[lineLen] = '\0'; // trim the nl
+        } 
         // compare len
-        if (lineLen != game->width) return (ft_putstr_fd("Map error\n", 2), close(fd), return true);
+        if (lineLen != game->width) return (ft_putstr_fd("Map error\n", 2), close(fd), true);
     }
 
     close(fd);
 
     // min map height 
-    if (game->height < 3) return (ft_putstr_fd("Map error\n", 2), return true);
+    if (game->height < 3) return (ft_putstr_fd("Map error\n", 2), true);
     else return false;
 }
 
 bool ReadMapToBuffer(char *filePath, t_game *game)
 {
     // Anything?, same width each row?, fetch dimensions
-    if (GetDimensions(fd, game)) return (close(fd), reeturn true);
+    if (GetDimensions(filePath, game)) return true;
 
     game->map = (char**)malloc(sizeof(char*) * (game->height ));
     if (!game->map) return (ft_putstr_fd("Malloc error\n", 2), true);
 
     int fd = open(filePath, O_RDONLY);
     if (fd < 0)
-        return (ft_putstr_fd("Open error\n", 2), free(game->map), return true);
+        return (ft_putstr_fd("Open error\n", 2), free(game->map), true);
 
     // is this correct? xd     
     for (int i = 0; i < game->height; i++)
-        map[i] = get_next_line(fd);
+        game->map[i] = get_next_line(fd);
 
     close(fd);
     return false; 
@@ -119,7 +131,7 @@ bool ReadMapToBuffer(char *filePath, t_game *game)
 
 void FreeMap(char **map, int height)
 {
-    for (int i = 0; i < game->height; i++)
+    for (int i = 0; i < height; i++)
     {
         if (map[i])
             free(map[i]);
@@ -139,13 +151,13 @@ bool CheckMapContents(t_game *game)
         for (int x = 0; x < game->width; x++)
         {
             if (!ft_strchr("PCE10\n", game->map[y][x]))
-                return ((ft_putstr_fd("Map error\n", 2), FreeMap(game->map, game->height), return true));
+                return ((ft_putstr_fd("Map error\n", 2), FreeMap(game->map, game->height), true));
             
             if (game->map[y][x] == 'P')
             {
                 if (hasPlayer) // double player
-                    return ((ft_putstr_fd("Map error\n", 2), FreeMap(game->map, game->height), return true));
-                game->map[y][x] = 0; // clear for renderer
+                    return ((ft_putstr_fd("Map error\n", 2), FreeMap(game->map, game->height), true));
+                game->map[y][x] = '0'; // clear for renderer
                 game->x = x; // fetch for renderer
                 game->y = y; // fetch for renderer
                 hasPlayer = true;
@@ -153,7 +165,7 @@ bool CheckMapContents(t_game *game)
             else if (game->map[y][x] == 'E')
             {
                 if (hasExit) // double exit
-                    return ((ft_putstr_fd("Map error\n", 2), FreeMap(game->map, game->height), return true));
+                    return ((ft_putstr_fd("Map error\n", 2), FreeMap(game->map, game->height), true));
                 game->exitX = x; // renderer stuff
                 game->exitY = y; // renderer stuff
                 hasExit = true;
@@ -163,25 +175,25 @@ bool CheckMapContents(t_game *game)
         }
     }
     if (!hasPlayer || !hasExit || !game->nColectables) 
-        return ((ft_putstr_fd("Map error\n", 2), FreeMap(game->map, game->height), return true));
+        return ((ft_putstr_fd("Map error\n", 2), FreeMap(game->map, game->height), true));
     else return false;
 }
 
-bool FloodFill(t_game *game, int y, int x, char to_fill)
+bool FloodFill(char **map, t_game *game, int y, int x, char to_fill)
 {
     if (x < 0 || y < 0 || y >= game->height || x >= game->width)
         return true; // if out of bounds === map not closed
 
-    if (game->map[y][x] != to_fill && !ft_strchr("ECP", game->map[y][x])) // wall
+    if (map[y][x] != to_fill && !ft_strchr("ECP", map[y][x])) // wall
         return false;
     
-    game->map[y][x] = 'x'; // 0s in the game->map will become F!!!
+    map[y][x] = 'x'; // 0s in the game->map will become F!!!
 
     bool edge = false;
-    edge |= floodFill(game->map, y, x - 1, to_fill);
-    edge |= floodFill(game->map, y, x + 1, to_fill);
-    edge |= floodFill(game->map, y - 1, x, to_fill);
-    edge |= floodFill(game->map, y + 1, x, to_fill);
+    edge |= FloodFill(map, game, y, x - 1, to_fill);
+    edge |= FloodFill(map, game, y, x + 1, to_fill);
+    edge |= FloodFill(map, game, y - 1, x, to_fill);
+    edge |= FloodFill(map, game, y + 1, x, to_fill);
     return edge;
 }
 
@@ -194,7 +206,7 @@ static bool CheckMapClosed(t_game *game)
         mapCopy[i] = ft_strdup(game->map[i]);
         //todo error checking
     }
-    bool passedTest = FloodFill(game->map, game->y, head->x, '0'); 
+    bool passedTest = FloodFill(mapCopy, game, game->y, game->x, '0'); 
     FreeMap(mapCopy, game->height);
     return (passedTest);
 }
@@ -220,7 +232,7 @@ void draw_square(t_game *game, int x, int y, int color) {
     
     for (i = 0; i < TSIZE; i++) {
         for (j = 0; j < TSIZE; j++) {
-            put_pixel(game, x + j, y + i, color);
+            put_pixel_to_img(game, x + j, y + i, color);
         }
     }
 }
@@ -228,13 +240,24 @@ void draw_square(t_game *game, int x, int y, int color) {
 // Renders the map
 void RenderMap(t_game *game)
 {
-    for (int y = 0; y < HEIGHT; y++) {
-        for (int x = 0; x < WIDTH; x++) {
+    for (int i = 0; i < game->height; i++)
+    {
+        for(int j = 0; j< game->width; j++)
+        {
+            printf("%c", game->map[i][j]);
+        }
+        printf("\n");
+    }
+
+    for (int y = 0; y < game->height; y++)
+    {
+        for (int x = 0; x < game->width; x++) 
+        {
             if (game->map[y][x] == '1')
                 draw_square(game, x * (TSIZE + 1), y * (TSIZE + 1), 0x0000FF); // wall
             else if (game->map[y][x] == 'C')
                 draw_square(game, x * (TSIZE + 1), y * (TSIZE + 1), 0x00FFFF); // colectable
-            else if (game->x == game->exitX && game->y == game->exitY)
+            else if (game->map[y][x] == 'E')
                 draw_square(game, x * (TSIZE + 1), y * (TSIZE + 1), 0xFFFF00); // Exit
             else
                 draw_square(game, x * (TSIZE + 1), y * (TSIZE + 1), 0xFFFFFF); // walkable space
@@ -246,9 +269,9 @@ void RenderMap(t_game *game)
 
 }
 
-int ExitGame(t_game *param)
+int ExitGame(t_game *game)
 {
-   	if (data->map)
+   	if (game->map)
 		FreeMap(game->map, game->height);
 	if (game->img_ptr)
 		mlx_destroy_image(game->mlx_ptr, game->img_ptr);
@@ -267,9 +290,9 @@ void MoveUp(t_game *game)
     int newY = game->y - 1;
     if (newY < 0 || newY >= game->height) return ;
 
-    if (game->map[y][game->x] == '1' || 
-        game->map[y][game->x] == '\n' || 
-        game->map[y][game->x] == '\0')
+    if (game->map[newY][game->x] == '1' || 
+        game->map[newY][game->x] == '\n' || 
+        game->map[newY][game->x] == '\0')
         return ;
     
     game->y--;
@@ -283,7 +306,7 @@ void MoveUp(t_game *game)
     {
         if (game->nColectables == 0)
         {
-            ft_putstr("YOU WIN\n");
+            ft_putstr_fd("YOU WIN\n", 1);
             ExitGame(game);
         }
     }
@@ -309,7 +332,7 @@ void MoveDown(t_game *game)
     {
         if (game->nColectables == 0)
         {
-            ft_putstr("YOU WIN\n");
+            ft_putstr_fd("YOU WIN\n", 1);
             ExitGame(game);
         }
     }
@@ -319,23 +342,23 @@ void MoveRight(t_game *game)
     int newX = game->x + 1;
     if (newX < 0 || newX >= game->width) return ;
 
-    if (game->map[newY][game->x] == '1' || 
-        game->map[newY][game->x] == '\n' || 
-        game->map[newY][game->x] == '\0')
+    if (game->map[game->y][newX] == '1' || 
+        game->map[game->y][newX] == '\n' || 
+        game->map[game->y][newX] == '\0')
         return ;
     
-    game->y++;
+    game->x++;
     // todo moves print here
     if (game->map[game->y][game->x] == 'C')
     {
         game->nColectables--;
         game->map[game->y][game->x] = '0';
     }
-    else if (game->x == game->exitX && newY == game->exitY)
+    else if (game->x == game->exitX && game->y == game->exitY)
     {
         if (game->nColectables == 0)
         {
-            ft_putstr("YOU WIN\n");
+            ft_putstr_fd("YOU WIN\n", 1);
             ExitGame(game);
         }
     }
@@ -345,23 +368,23 @@ void MoveLeft(t_game *game)
     int newX = game->x - 1;
     if (newX < 0 || newX >= game->width) return ;
 
-    if (game->map[newY][game->x] == '1' || 
-        game->map[newY][game->x] == '\n' || 
-        game->map[newY][game->x] == '\0')
+    if (game->map[game->y][newX] == '1' || 
+        game->map[game->y][newX] == '\n' || 
+        game->map[game->y][newX] == '\0')
         return ;
     
-    game->y--;
+    game->x--;
     // todo moves print here
     if (game->map[game->y][game->x] == 'C')
     {
         game->nColectables--;
         game->map[game->y][game->x] = '0';
     }
-    else if (game->x == game->exitX && newY == game->exitY)
+    else if (game->x == game->exitX && game->y == game->exitY)
     {
         if (game->nColectables == 0)
         {
-            ft_putstr("YOU WIN\n");
+            ft_putstr_fd("YOU WIN\n", 1);
             ExitGame(game);
         }
     }
@@ -395,12 +418,13 @@ int main(int ac, char **av)
     // no args, arg len, arg termination
     if (ParseInput(ac, av)) return 1;
 
+
     // Can open file and stuff
     if (CheckFile(av)) return 2;
 
     t_game game;
     // init to 0
-    ft_memset(game, 0, sizeof(game));
+    ft_memset(&game, 0, sizeof(game));
 
     // check dimensions and store map
     if (ReadMapToBuffer(av[1], &game)) return 3;
@@ -408,7 +432,8 @@ int main(int ac, char **av)
     // check for exit, player, colectables and bad chars on the map
     if (CheckMapContents(&game)) return 4;
 
-    if (CheckClosedMap(&game)) return 5;
+    if (CheckMapClosed(&game)) return 5;
+    printf("OIOI\n");
 
     // MINILIBX
     game.mlx_ptr = mlx_init();
@@ -417,11 +442,13 @@ int main(int ac, char **av)
     //todo error check
     game.img_ptr = mlx_new_image(game.mlx_ptr, WIDTH, HEIGHT);
     //todo error check
-    game.img_addr = mlx_get_data_addr(game.img_ptr, &game.bpp, &game.line_len, &game.endian);
+    game.img_addr = mlx_get_data_addr(game.img_ptr, &game.bpp, &game.line_len, &game.endina);
     //todo error check
 
     // Draw map
     RenderMap(&game);
+
+    printf("OIOI\n");
 
     mlx_hook(game.win_ptr, DestroyNotify, 1L << 0, ExitGame, &game);
     mlx_key_hook(game.win_ptr, ReadKeys, &game);

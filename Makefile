@@ -1,4 +1,4 @@
-w# EXECUTABLE
+# EXECUTABLE
 TARGET = fdf
 
 # LIBRARIES
@@ -17,7 +17,7 @@ CFLAGS = -I$(INC_DIR) -I$(LIB_DIR)libft -I$(LIB_DIR)minilibx-linux -Wall -Werror
 LINKS = -L$(LIB_DIR) -lft -lmlx -lX11 -lXext -lm
 
 # FILES
-SRC_FILES = 
+SRC_FILES = main.c
 
 SRC = $(addprefix $(SRC_DIR), $(SRC_FILES))
 OBJ = $(addprefix $(OBJ_DIR), $(SRC_FILES:.c=.o))
@@ -40,8 +40,8 @@ $(LIBFT):
 
 $(MINILIBX):
 	@echo "Creating libmlx_Linux.a..."
-	@make --silent -C $(LIB_DIR)minilibx-linux > /dev/null 2>&1
-	@cp $(LIB_DIR)minilibx-linux/libmlx.a $@
+	@make --silent -C lib/minilibx-linux > /dev/null 2>&1
+	@cp lib/minilibx-linux/libmlx.a $@
 
 $(OBJ_DIR):
 	@mkdir -p $(OBJ_DIR)
